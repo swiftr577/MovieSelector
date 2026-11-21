@@ -67,7 +67,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:34px}
 .msg{margin:18px 0 0;padding:14px 16px;border-radius:12px;background:var(--panel);border:2px solid var(--line)}
 
 /* Shortlist */
-.short{margin-top:22px}
+.short{margin-top:22px;scroll-margin-top:14px}
 .short h2{margin-top:0}
 .cand{display:flex;gap:14px;align-items:center;width:100%;text-align:left;margin-top:8px;padding:10px;cursor:pointer;
   background:var(--panel);color:var(--ink);border:2px solid var(--line);border-radius:14px;font:500 16px/1.35 var(--body)}
@@ -111,7 +111,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:34px}
 .rate button[aria-pressed="true"]{color:var(--accent)}
 
 details{margin-top:14px;border-top:2px solid var(--line);padding-top:12px}
-.lists{margin-top:34px}
+.lists{margin-top:26px}
 summary{cursor:pointer;font-weight:700;padding:6px 0}
 details p{color:var(--muted);font-size:16px;margin:8px 0 12px}
 details a{color:var(--ink)}
@@ -127,6 +127,7 @@ details a{color:var(--ink)}
   background:var(--panel);color:var(--ink)}
 .keyrow button{font:700 16px var(--body);padding:0 18px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);cursor:pointer}
 select{width:100%;font:600 16px var(--body);padding:13px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink)}
+.search{margin-top:34px;border-top:2px solid var(--line);padding-top:4px}
 .filters{margin-top:22px;border-bottom:2px solid var(--line);padding-bottom:12px}
 .filters[open]{padding-bottom:20px}
 .filters summary span{font-weight:500;color:var(--muted)}
@@ -162,7 +163,8 @@ footer{margin-top:28px;color:var(--muted);font-size:13px;line-height:1.5}
     <input type="range" id="score" min="0" max="9" step="0.5">
   </div>
 
-  <label class="check"><input type="checkbox" id="three"> Show three to choose from</label>
+  <h2 id="h-count">Show me</h2>
+  <div class="chips square" id="counts" role="group" aria-labelledby="h-count"></div>
 
   <details class="filters" id="filters">
     <summary>More filters <span id="fCount"></span></summary>
@@ -210,6 +212,16 @@ footer{margin-top:28px;color:var(--muted);font-size:13px;line-height:1.5}
   <section class="short" id="short" aria-live="polite" hidden></section>
   <article class="ticket" id="ticket" aria-live="polite" hidden></article>
 
+  <section class="search">
+<h2><label for="q">Or search for a title</label></h2>
+    <div class="keyrow">
+      <input id="q" type="search" autocomplete="off" placeholder="Title, or part of one">
+      <button id="qFind" type="button">Search</button>
+    </div>
+    <p class="note">Use * for any run of letters and ? for a single letter, for example “home al*” or “*wars*”.</p>
+    <label class="check"><input type="checkbox" id="qMine"> Only show titles on my services</label>
+  </section>
+
   <div class="lists">
     <details id="box-saved">
       <summary>Saved for later (<span data-count="saved">0</span>)</summary>
@@ -250,14 +262,14 @@ footer{margin-top:28px;color:var(--muted);font-size:13px;line-height:1.5}
 
   <footer>
     This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming availability by JustWatch.
-    Listings can lag behind the services by a day or two. <span id="ver">v1.5</span>
+    Listings can lag behind the services by a day or two. <span id="ver">v1.7</span>
   </footer>
 </main>
 
 <script>
 (() => {
 'use strict';
-const VERSION = '1.5';
+const VERSION = '1.7';
 const API = 'https://api.themoviedb.org/3';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const THUMB = 'https://image.tmdb.org/t/p/w154';
@@ -312,6 +324,7 @@ const ERAS = [
   {v:'new', label:'2020 on', from:2020},
 ];
 const RUNS = [{v:0, label:'Any length'}, {v:90, label:'1h 30 or less'}, {v:120, label:'2h or less'}, {v:150, label:'2h 30 or less'}];
+const COUNTS = [{v:1, label:'One pick'}, {v:3, label:'Three to choose from'}, {v:10, label:'Ten to choose from'}];
 const FAMES = [{v:'known', label:'Well-known'}, {v:'any', label:'Anything'}, {v:'gems', label:'Hidden gems'}];
 // vote-count window per mode: [min, max]
 const FAME_VOTES = {known:{movie:[500], tv:[200]}, any:{movie:[30], tv:[20]}, gems:{movie:[40, 500], tv:[20, 200]}};
@@ -348,7 +361,7 @@ const readJSON = (k, fallback) => { try { const v = JSON.parse(store.get(k)); re
 let key = (store.get('mp.key') || '').trim();
 
 const state = Object.assign(
-  {mode:'movie', themes:['christmas'], services:SERVICES.map(s => s.key), minScore:6.5, three:false, freeOnly:false, ...FILTER_DEFAULTS},
+  {mode:'movie', themes:['christmas'], services:SERVICES.map(s => s.key), minScore:6.5, count:1, freeOnly:false, searchMine:false, ...FILTER_DEFAULTS},
   readJSON('mp.prefs', {})
 );
 if (typeof state.theme === 'string') { state.themes = state.theme === 'any' ? [] : [state.theme]; delete state.theme; }
@@ -360,6 +373,7 @@ if (typeof state.cert === 'string') { // v1.3 stored a single "up to" cap
 }
 if (!Array.isArray(state.certs)) state.certs = [];
 if (!Array.isArray(state.excludes)) state.excludes = [];
+if (typeof state.three === 'boolean') { if (state.three) state.count = 3; delete state.three; }
 if (typeof state.known === 'boolean') { state.fame = state.known ? 'known' : 'any'; delete state.known; }
 if (state.themes.includes('kiwi')) { state.country = 'NZ'; }
 state.themes = state.themes.filter(id => THEMES.some(t => t.id === id));
@@ -540,15 +554,16 @@ async function pick() {
       $('#ticket').hidden = true; $('#short').hidden = true; $('#count').textContent = '';
       throw new Friendly('Nothing matches that combination. Drop a theme, lower the minimum score, open “More filters” and loosen them, or switch on more services.');
     }
-    const want = state.three ? 3 : 1;
+    const want = COUNTS.some(c => c.v === state.count) ? state.count : 1;
+    const perPage = want > 3 ? 4 : 1;
     const pages = Math.min(first.total_pages || 1, 500);
     const out = [];
     const ok = m => { const k = type + ':' + m.id; return !seen.has(k) && !excluded(k) && !out.some(o => o.id === m.id); };
-    for (let i = 0; i < 4 + want * 2 && out.length < want; i++) {
+    for (let i = 0; i < 10 && out.length < want; i++) {
       const pg = 1 + Math.floor(Math.random() * pages);
       const data = pg === 1 ? first : await tmdb(path, {...params, page:pg});
       const fresh = (data.results || []).filter(ok);
-      if (fresh.length) out.push(fresh[Math.floor(Math.random() * fresh.length)]);
+      shuffle(fresh).slice(0, Math.min(perPage, want - out.length)).forEach(m => out.push(m));
     }
     if (out.length < want) {
       if (!out.length) seen.clear();
@@ -562,6 +577,52 @@ async function pick() {
     $('#count').textContent = total.toLocaleString('en-NZ') + (type === 'tv' ? ' series match' : total === 1 ? ' movie matches' : ' movies match');
     if (items.length > 1) { renderShortlist(items, 'Choose one', bandLabel()); }
     else { $('#short').hidden = true; await openDetail(items[0], bandLabel()); }
+  } catch (e) { fail(e); }
+  finally { setBusy(false); }
+}
+
+// ---- title search ----
+// * matches any run of characters, ? matches one. The pattern must match the whole title.
+function wildcard(q) {
+  if (!/[*?]/.test(q)) return null;
+  const body = q.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*+/g, '.*').replace(/\?/g, '.');
+  return new RegExp('^' + body + '$', 'i');
+}
+async function searchTitles() {
+  const raw = $('#q').value.trim().replace(/\s+/g, ' ');
+  if (!raw) return;
+  if (!key) { openSettings('Add your free TMDB key first.'); return; }
+  setBusy(true); showMsg('');
+  try {
+    const type = state.mode, rx = wildcard(raw);
+    const query = raw.replace(/[*?]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query) throw new Friendly('Add a few letters alongside the * or ?.');
+    let results = [];
+    for (let pg = 1; pg <= (rx ? 3 : 1); pg++) {
+      const d = await tmdb('/search/' + type, {query, page:pg, include_adult:'false', language:'en-US'});
+      results = results.concat(d.results || []);
+      if (pg >= (d.total_pages || 1)) break;
+    }
+    if (rx) results = results.filter(r => [r.title, r.name, r.original_title, r.original_name].some(t => t && rx.test(t.trim())));
+    if (state.searchMine && results.length) {
+      const ids = chosenIds(await loadProviders(type));
+      if (!ids.length) throw new Friendly(noServices());
+      const checked = await Promise.all(results.slice(0, 20).map(async r => {
+        try {
+          const w = await tmdb('/' + type + '/' + r.id + '/watch/providers');
+          const nz = (w.results && w.results.NZ) || {};
+          return [].concat(nz.flatrate || [], nz.free || [], nz.ads || []).some(o => ids.includes(o.provider_id)) ? r : null;
+        } catch (e) { return null; }
+      }));
+      results = checked.filter(Boolean);
+    }
+    const items = results.slice(0, 10).map(r => norm(r, type));
+    if (!items.length) {
+      $('#short').hidden = true; $('#ticket').hidden = true;
+      throw new Friendly('No ' + (type === 'tv' ? 'series' : 'movies') + ' found for “' + raw + '”' + (state.searchMine ? ' on your services.' : '.'));
+    }
+    $('#count').textContent = '';
+    renderShortlist(items, 'Results for “' + raw + '”', 'Search result');
   } catch (e) { fail(e); }
   finally { setBusy(false); }
 }
@@ -586,7 +647,7 @@ function renderShortlist(items, heading, band) {
     return b;
   }));
   box.hidden = false;
-  box.scrollIntoView({behavior:smooth(), block:'nearest'});
+  box.scrollIntoView({behavior:smooth(), block:'start'});
 }
 
 async function openDetail(item, band) {
@@ -827,6 +888,7 @@ SERVICES.forEach(s => {
   };
   $('#services').append(b);
 });
+choice('#counts', COUNTS, 'count');
 const paintPerson = () => {
   $('#personChosen').hidden = !state.person;
   $('#personChosen span').textContent = state.person ? 'Only titles with ' + state.person.name : '';
@@ -880,11 +942,13 @@ const score = $('#score');
 score.value = state.minScore;
 score.oninput = () => { state.minScore = Number(score.value); scoreLabel(); };
 score.onchange = savePrefs;
-[['three', '#three'], ['freeOnly', '#freeOnly']].forEach(([f, sel]) => {
+[['freeOnly', '#freeOnly'], ['searchMine', '#qMine']].forEach(([f, sel]) => {
   $(sel).checked = !!state[f];
   $(sel).onchange = e => { state[f] = e.target.checked; savePrefs(); };
 });
 $('#go').onclick = pick;
+$('#qFind').onclick = searchTitles;
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter') searchTitles(); });
 $('#saveKey').onclick = () => {
   const v = $('#key').value.trim();
   if (!v) { showMsg('Paste your TMDB key first.'); return; }
