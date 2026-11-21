@@ -262,14 +262,14 @@ footer{margin-top:28px;color:var(--muted);font-size:13px;line-height:1.5}
 
   <footer>
     This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming availability by JustWatch.
-    Listings can lag behind the services by a day or two. <span id="ver">v1.7</span>
+    Listings can lag behind the services by a day or two. <span id="ver">v1.8</span>
   </footer>
 </main>
 
 <script>
 (() => {
 'use strict';
-const VERSION = '1.7';
+const VERSION = '1.8';
 const API = 'https://api.themoviedb.org/3';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const THUMB = 'https://image.tmdb.org/t/p/w154';
@@ -324,6 +324,7 @@ const ERAS = [
   {v:'new', label:'2020 on', from:2020},
 ];
 const RUNS = [{v:0, label:'Any length'}, {v:90, label:'1h 30 or less'}, {v:120, label:'2h or less'}, {v:150, label:'2h 30 or less'}];
+const FREE = ['tvnz', 'three'];
 const COUNTS = [{v:1, label:'One pick'}, {v:3, label:'Three to choose from'}, {v:10, label:'Ten to choose from'}];
 const FAMES = [{v:'known', label:'Well-known'}, {v:'any', label:'Anything'}, {v:'gems', label:'Hidden gems'}];
 // vote-count window per mode: [min, max]
@@ -459,8 +460,8 @@ function markServices() {
     b.disabled = missing; b.title = missing ? 'Not listed for New Zealand on TMDB' : '';
   });
 }
-const chosenIds = map => (state.freeOnly ? ['tvnz', 'three'] : state.services).map(k => map[k] && map[k].id).filter(Boolean);
-const noServices = () => state.freeOnly ? "TVNZ+ and ThreeNow aren't listed on TMDB for this. Untick “Free services only”." : 'Switch on at least one streaming service.';
+const chosenIds = map => state.services.map(k => map[k] && map[k].id).filter(Boolean);
+const noServices = () => 'Switch on at least one streaming service that TMDB lists for New Zealand.';
 
 const kwCache = {};
 async function keywordId(name) {
@@ -884,7 +885,10 @@ SERVICES.forEach(s => {
   b.onclick = () => {
     const on = !state.services.includes(s.key);
     state.services = on ? state.services.concat(s.key) : state.services.filter(k => k !== s.key);
-    b.setAttribute('aria-pressed', String(on)); savePrefs();
+    b.setAttribute('aria-pressed', String(on));
+    const freeNow = state.services.length > 0 && state.services.every(k => FREE.includes(k));
+    if (state.freeOnly && !freeNow) { state.freeOnly = false; delete state.servicesBefore; $('#freeOnly').checked = false; }
+    savePrefs();
   };
   $('#services').append(b);
 });
@@ -942,10 +946,22 @@ const score = $('#score');
 score.value = state.minScore;
 score.oninput = () => { state.minScore = Number(score.value); scoreLabel(); };
 score.onchange = savePrefs;
-[['freeOnly', '#freeOnly'], ['searchMine', '#qMine']].forEach(([f, sel]) => {
+[['searchMine', '#qMine']].forEach(([f, sel]) => {
   $(sel).checked = !!state[f];
   $(sel).onchange = e => { state[f] = e.target.checked; savePrefs(); };
 });
+const paintServices = () => $$('#services .chip').forEach(b => b.setAttribute('aria-pressed', String(state.services.includes(b.dataset.key))));
+function setFreeOnly(on) {
+  if (on) { state.servicesBefore = state.services.slice(); state.services = FREE.slice(); }
+  else {
+    state.services = Array.isArray(state.servicesBefore) && state.servicesBefore.length ? state.servicesBefore : SERVICES.map(s => s.key);
+    delete state.servicesBefore;
+  }
+  state.freeOnly = on; savePrefs(); paintServices();
+}
+if (state.freeOnly && state.services.some(k => !FREE.includes(k))) setFreeOnly(true); // carried over from v1.5
+$('#freeOnly').checked = !!state.freeOnly;
+$('#freeOnly').onchange = e => setFreeOnly(e.target.checked);
 $('#go').onclick = pick;
 $('#qFind').onclick = searchTitles;
 $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') searchTitles(); });
