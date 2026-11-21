@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Movie Picker</title>
+<meta name="theme-color" content="#21142a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#efe7f0; --ink:#2a1830; --panel:#fffafc; --muted:#6a5670; --line:#d6c7da;
+  --ticket:#fff1cf; --ticket-ink:#2a1830; --ticket-muted:#6b5a4a; --ticket-line:#d9c08a;
+  --accent:#b3261e; --on-accent:#fff;
+  --display:"Bagel Fat One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#21142a; --ink:#f4e9f5; --panel:#2e1d38; --muted:#b7a2bd; --line:#4a3453;
+    --ticket:#f7e6b8; --ticket-ink:#2a1830; --ticket-muted:#6b5a4a; --ticket-line:#cdb277;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 17px/1.5 var(--body);
+  padding:max(20px,env(safe-area-inset-top)) 18px calc(32px + env(safe-area-inset-bottom))}
+main{max-width:560px;margin:0 auto}
+h1{font:400 clamp(38px,11vw,56px)/.98 var(--display);margin:8px 0 6px;letter-spacing:-.01em}
+.lede{margin:0 0 26px;color:var(--muted)}
+h2{font:700 17px/1.3 var(--body);margin:26px 0 10px}
+h2 span{font-weight:500;color:var(--muted)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:600 16px/1 var(--body);color:var(--ink);background:var(--panel);border:2px solid var(--line);
+  border-radius:999px;padding:13px 16px;min-height:46px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip:disabled{opacity:.45;cursor:not-allowed;text-decoration:line-through}
+.services .chip{border-radius:12px}
+.services .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+
+.score{display:flex;align-items:center;gap:14px}
+.score output{font:400 26px/1 var(--display);min-width:112px}
+input[type=range]{flex:1;accent-color:var(--accent);height:34px}
+.check{display:flex;align-items:center;gap:10px;margin-top:14px;font-weight:500}
+.check input{width:22px;height:22px;accent-color:var(--accent)}
+
+.go{display:block;width:100%;margin:28px 0 8px;padding:18px;border:0;border-radius:16px;cursor:pointer;
+  background:var(--accent);color:var(--on-accent);font:400 26px/1 var(--display);letter-spacing:.01em}
+.go:disabled{opacity:.6;cursor:progress}
+.count{margin:0;text-align:center;color:var(--muted);font-size:15px;min-height:1.5em}
+
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+
+.msg{margin:18px 0 0;padding:14px 16px;border-radius:12px;background:var(--panel);border:2px solid var(--line)}
+.msg[hidden]{display:none}
+
+/* The ticket */
+.ticket{margin-top:22px;background:var(--ticket);color:var(--ticket-ink);border-radius:18px;overflow:hidden;
+  box-shadow:0 14px 0 -6px color-mix(in srgb,var(--ink) 18%,transparent)}
+.ticket[hidden]{display:none}
+.ticket.print{animation:print .5s cubic-bezier(.2,.9,.3,1.15)}
+@keyframes print{from{transform:translateY(-26px) rotate(-1.5deg);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.ticket.print{animation:none}}
+.band{background:var(--accent);color:var(--on-accent);padding:10px 18px;font:400 19px/1.2 var(--display);
+  display:flex;justify-content:space-between;gap:12px}
+.top{display:flex;gap:16px;padding:18px}
+.poster{flex:0 0 112px;width:112px;aspect-ratio:2/3;border-radius:8px;object-fit:cover;background:var(--ticket-line)}
+.top h3{font:400 27px/1.05 var(--display);margin:0 0 8px;overflow-wrap:anywhere}
+.facts{margin:0;padding:0;list-style:none;color:var(--ticket-muted);font-size:16px;line-height:1.45}
+.facts b{color:var(--ticket-ink);font-weight:700}
+.overview{margin:0;padding:0 18px 12px;font-size:16px}
+.people{padding:0 18px 18px}
+.watched{display:block;width:100%;margin-top:16px;padding:14px;border-radius:12px;cursor:pointer;
+  font:700 17px/1 var(--body);background:transparent;color:var(--ticket-ink);border:2px solid var(--ticket-ink)}
+.watched[aria-pressed="true"]{background:var(--ticket-ink);color:var(--ticket)}
+.ticket :focus-visible{outline-color:var(--ticket-ink)}
+#wList{list-style:none;margin:8px 0 0;padding:0}
+#wList li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+#wList button{font:600 15px var(--body);padding:9px 14px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+details+details{margin-top:14px}
+.tear{position:relative;border-top:3px dashed var(--ticket-line);margin:0 14px}
+.tear::before,.tear::after{content:"";position:absolute;top:-14px;width:26px;height:26px;border-radius:50%;background:var(--bg)}
+.tear::before{left:-27px}.tear::after{right:-27px}
+.stub{padding:16px 18px 18px}
+.stub p{margin:0 0 4px;color:var(--ticket-muted);font-size:15px}
+.on{font:400 22px/1.2 var(--display);margin:0 0 12px}
+.links{display:flex;flex-wrap:wrap;gap:8px 18px}
+.links a{color:var(--ticket-ink);font-weight:700;font-size:16px}
+
+details{margin-top:34px;border-top:2px solid var(--line);padding-top:14px}
+summary{cursor:pointer;font-weight:700;padding:6px 0}
+details p{color:var(--muted);font-size:16px;margin:8px 0 12px}
+details a{color:var(--ink)}
+.keyrow{display:flex;gap:8px}
+.keyrow input{flex:1;min-width:0;font:500 16px var(--body);padding:13px;border-radius:12px;border:2px solid var(--line);
+  background:var(--panel);color:var(--ink)}
+.keyrow button{font:700 16px var(--body);padding:0 18px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);cursor:pointer}
+footer{margin-top:28px;color:var(--muted);font-size:13px;line-height:1.5}
+#ver{display:block;margin-top:10px;text-align:right;font-size:12px;opacity:.7}
+</style>
+</head>
+<body>
+<main>
+  <h1>What are we watching?</h1>
+  <p class="lede">Pick a mood, set the bar, and let the picker choose from what's streaming in New Zealand.</p>
+
+  <h2 id="h-theme">Theme</h2>
+  <div class="chips" id="themes" role="group" aria-labelledby="h-theme"></div>
+
+  <h2 id="h-serv">Services <span>— tap to switch off any you don't have</span></h2>
+  <div class="chips services" id="services" role="group" aria-labelledby="h-serv"></div>
+
+  <h2><label for="score">Minimum score <span>— audience rating out of 10</span></label></h2>
+  <div class="score">
+    <output id="scoreOut" for="score"></output>
+    <input type="range" id="score" min="0" max="9" step="0.5">
+  </div>
+  <label class="check"><input type="checkbox" id="known"> Stick to well-known movies</label>
+
+  <button class="go" id="go" type="button">Pick a movie</button>
+  <p class="count" id="count" aria-live="polite"></p>
+
+  <div class="msg" id="msg" role="alert" hidden></div>
+
+  <article class="ticket" id="ticket" aria-live="polite" hidden></article>
+
+  <details id="watchedBox">
+    <summary>Watched movies (<span id="wCount">0</span>)</summary>
+    <p id="wEmpty">Movies you mark as watched are listed here and left out of future picks.</p>
+    <ul id="wList"></ul>
+  </details>
+
+  <details id="settings">
+    <summary>Movie data key</summary>
+    <p>Listings come from TMDB, which needs a free personal key. Create an account at
+      <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org → Settings → API</a>
+      and paste either the API key or the read access token here. It is saved on this device only.</p>
+    <div class="keyrow">
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste TMDB key" aria-label="TMDB key">
+      <button id="saveKey" type="button">Save key</button>
+    </div>
+  </details>
+
+  <footer>
+    This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming availability by JustWatch.
+    Listings can lag behind the services by a day or two. <span id="ver">v1.2</span>
+  </footer>
+</main>
+
+<script>
+(() => {
+'use strict';
+const API = 'https://api.themoviedb.org/3';
+const IMG = 'https://image.tmdb.org/t/p/w342';
+
+// id = TMDB provider id we expect; it is only trusted if the name also matches.
+const SERVICES = [
+  {key:'netflix', label:'Netflix',  id:8,   match:/^netflix$/i},
+  {key:'apple',   label:'Apple TV', id:350, match:/^apple tv ?(\+|plus)?$/i},
+  {key:'disney',  label:'Disney+',  id:337, match:/^disney ?(\+|plus)$/i},
+  {key:'prime',   label:'Prime Video', id:119, match:/^(amazon )?prime video$/i},
+  {key:'neon',    label:'Neon',     id:273, match:/^neon( tv)?$/i},
+  {key:'tvnz',    label:'TVNZ+',    id:395, match:/tvnz/i},
+  {key:'three',   label:'ThreeNow', id:440, match:/three ?now|^three$/i},
+];
+
+// genres = TMDB genre ids (comma = must have all). kw = keyword looked up by name.
+const THEMES = [
+  {id:'christmas', label:'Christmas',     kw:'christmas',            kwId:207317, c:'#b3261e'},
+  {id:'family',    label:'Family night',  genres:'10751',            c:'#1f6f5c'},
+  {id:'animated',  label:'Animated',      genres:'16',               c:'#0f6aa8'},
+  {id:'laughs',    label:'Big laughs',    genres:'35',               c:'#a8500a'},
+  {id:'romcom',    label:'Rom-com',       genres:'10749,35',         c:'#b02a6b'},
+  {id:'action',    label:'Action',        genres:'28',               c:'#8f2d10'},
+  {id:'scifi',     label:'Sci-fi',        genres:'878',              c:'#3b3fa6'},
+  {id:'thriller',  label:'Edge of seat',  genres:'53',               c:'#3d4a57'},
+  {id:'spooky',    label:'Spooky',        genres:'27',               c:'#5b2a86'},
+  {id:'heist',     label:'Heist',         kw:'heist',                c:'#1d5c7a'},
+  {id:'superhero', label:'Superhero',     kw:'superhero',            c:'#a11d3a'},
+  {id:'time',      label:'Time travel',   kw:'time travel',          c:'#2f6b3a'},
+  {id:'true',      label:'True story',    kw:'based on true story',  c:'#6b4a1f'},
+  {id:'doc',       label:'Documentary',   genres:'99',               c:'#3f5a2a'},
+  {id:'kiwi',      label:'Made in NZ',    origin:'NZ',               c:'#14524a'},
+  {id:'any',       label:'Surprise me',                              c:'#7a2a8c'},
+];
+
+const $ = s => document.querySelector(s);
+const el = (tag, props = {}, kids = []) => {
+  const n = Object.assign(document.createElement(tag), props);
+  [].concat(kids).forEach(k => k != null && n.append(k));
+  return n;
+};
+
+// Saves on the device where the browser allows it; otherwise lasts for the session.
+const mem = {};
+const store = {
+  get(k){ try { const v = localStorage.getItem(k); if (v !== null) return v; } catch(e){} return k in mem ? mem[k] : null; },
+  set(k,v){ mem[k] = v; try { localStorage.setItem(k, v); } catch(e){} },
+};
+
+let key = (store.get('mp.key') || '').trim();
+const state = Object.assign(
+  {theme:'christmas', services:SERVICES.map(s => s.key), minScore:6.5, known:true},
+  JSON.parse(store.get('mp.prefs') || '{}')
+);
+const savePrefs = () => store.set('mp.prefs', JSON.stringify(state));
+
+let watched = [];
+try { watched = JSON.parse(store.get('mp.watched') || '[]') || []; } catch (e) { watched = []; }
+const isWatched = id => watched.some(w => w.id === id);
+function setWatched(movie, on) {
+  watched = watched.filter(w => w.id !== movie.id);
+  if (on) watched.unshift({id:movie.id, title:movie.title, year:movie.year || ''});
+  store.set('mp.watched', JSON.stringify(watched));
+  renderWatched();
+}
+function renderWatched() {
+  $('#wCount').textContent = watched.length;
+  $('#wEmpty').hidden = watched.length > 0;
+  $('#wList').replaceChildren(...watched.map(w => {
+    const undo = el('button', {type:'button', textContent:'Remove'});
+    undo.setAttribute('aria-label', 'Remove ' + w.title + ' from watched');
+    undo.onclick = () => {
+      setWatched(w, false);
+      const b = document.querySelector('.watched[data-id="' + w.id + '"]');
+      if (b) { b.setAttribute('aria-pressed', 'false'); b.textContent = 'Mark as watched'; }
+    };
+    return el('li', {}, [el('span', {textContent:w.title + (w.year ? ' (' + w.year + ')' : '')}), undo]);
+  }));
+}
+
+class Friendly extends Error {}
+
+async function tmdb(path, params = {}) {
+  const url = new URL(API + path);
+  for (const [k,v] of Object.entries(params)) if (v !== '' && v != null) url.searchParams.set(k, v);
+  const headers = {accept:'application/json'};
+  if (key.length > 60) headers.Authorization = 'Bearer ' + key; else url.searchParams.set('api_key', key);
+  let r;
+  try { r = await fetch(url, {headers}); }
+  catch (e) { throw new Friendly("Can't reach TMDB. Check your connection. If you're viewing this inside a chat preview, outside requests are blocked there — open the page from where it's hosted instead."); }
+  if (r.status === 401) throw new Friendly("TMDB didn't accept that key. Open “Movie data key” below and paste it again.");
+  if (r.status === 429) throw new Friendly('TMDB is asking us to slow down. Wait a few seconds and pick again.');
+  if (!r.ok) throw new Friendly('TMDB returned an error (' + r.status + '). Try again shortly.');
+  return r.json();
+}
+
+// ---- lookups (cached for the session) ----
+let providers = null;
+async function loadProviders() {
+  if (providers) return providers;
+  const d = await tmdb('/watch/providers/movie', {watch_region:'NZ', language:'en-US'});
+  const list = d.results || [];
+  const out = {};
+  for (const s of SERVICES) {
+    const p = list.find(x => x.provider_id === s.id && s.match.test(x.provider_name))
+           || list.find(x => s.match.test(x.provider_name));
+    if (p) out[s.key] = {id:p.provider_id, name:p.provider_name};
+  }
+  providers = out;
+  document.querySelectorAll('#services .chip').forEach(b => {
+    if (!out[b.dataset.key]) { b.disabled = true; b.title = 'Not listed for New Zealand on TMDB'; }
+  });
+  return out;
+}
+
+const kwCache = {};
+async function keywordId(theme) {
+  if (kwCache[theme.id]) return kwCache[theme.id];
+  let id = theme.kwId || null;
+  try {
+    const d = await tmdb('/search/keyword', {query:theme.kw});
+    const hit = (d.results || []).find(k => k.name.toLowerCase() === theme.kw) || (d.results || [])[0];
+    if (hit) id = hit.id;
+  } catch (e) { if (!id) throw e; }
+  if (!id) throw new Friendly("Couldn't find the “" + theme.label + "” theme on TMDB. Try another theme.");
+  return (kwCache[theme.id] = id);
+}
+
+// ---- picking ----
+const pageCache = new Map();
+const seen = new Set();
+let lastSig = '';
+
+async function pick() {
+  if (!key) { openSettings('Add your free TMDB key to start picking.'); return; }
+  setBusy(true); showMsg('');
+  try {
+    const prov = await loadProviders();
+    const ids = state.services.map(k => prov[k] && prov[k].id).filter(Boolean);
+    if (!ids.length) throw new Friendly('Switch on at least one streaming service.');
+    const theme = THEMES.find(t => t.id === state.theme) || THEMES[0];
+
+    const params = {
+      watch_region:'NZ',
+      with_watch_providers:ids.join('|'),
+      with_watch_monetization_types:'flatrate|free|ads',
+      include_adult:'false', language:'en-US', sort_by:'popularity.desc',
+      'vote_count.gte': state.known ? 500 : 30,
+    };
+    if (state.minScore > 0) params['vote_average.gte'] = state.minScore;
+    if (theme.genres) params.with_genres = theme.genres;
+    if (theme.kw) params.with_keywords = await keywordId(theme);
+    if (theme.origin) params.with_origin_country = theme.origin;
+
+    const sig = JSON.stringify(params);
+    if (sig !== lastSig) { seen.clear(); lastSig = sig; }
+    let first = pageCache.get(sig);
+    if (!first) { first = await tmdb('/discover/movie', {...params, page:1}); pageCache.set(sig, first); }
+
+    const total = first.total_results || 0;
+    if (!total) {
+      $('#ticket').hidden = true; $('#count').textContent = '';
+      throw new Friendly('Nothing matches. Lower the minimum score, untick “well-known”, or switch on more services.');
+    }
+    if (seen.size >= Math.min(total, 10000)) seen.clear();
+
+    const pages = Math.min(first.total_pages || 1, 500);
+    let movie = null;
+    for (let i = 0; i < 6 && !movie; i++) {
+      const pg = 1 + Math.floor(Math.random() * pages);
+      const data = pg === 1 ? first : await tmdb('/discover/movie', {...params, page:pg});
+      const fresh = (data.results || []).filter(m => !seen.has(m.id) && !isWatched(m.id));
+      if (fresh.length) movie = fresh[Math.floor(Math.random() * fresh.length)];
+    }
+    if (!movie) {
+      seen.clear();
+      const left = first.results.filter(m => !isWatched(m.id));
+      if (!left.length) throw new Friendly("Couldn't find a match you haven't watched. Loosen the filters or remove some from “Watched movies”.");
+      movie = left[Math.floor(Math.random() * left.length)];
+    }
+    seen.add(movie.id);
+
+    let full = movie;
+    try { full = await tmdb('/movie/' + movie.id, {append_to_response:'watch/providers,release_dates,credits,videos', language:'en-US'}); } catch (e) {}
+    render(full, theme, ids);
+    $('#count').textContent = total === 1 ? '1 movie matches' : total.toLocaleString('en-NZ') + ' movies match';
+    $('#go').textContent = 'Pick another';
+  } catch (e) {
+    showMsg(e instanceof Friendly ? e.message : 'Something went wrong picking a movie. Try again.');
+    if (!(e instanceof Friendly)) console.error(e);
+  } finally { setBusy(false); }
+}
+
+function render(m, theme, chosenIds) {
+  const t = $('#ticket');
+  const year = (m.release_date || '').slice(0, 4);
+  const nz = ((m.release_dates && m.release_dates.results) || []).find(r => r.iso_3166_1 === 'NZ');
+  const cert = nz ? (nz.release_dates.map(r => r.certification).find(Boolean) || '') : '';
+  const wp = m['watch/providers'] && m['watch/providers'].results && m['watch/providers'].results.NZ;
+  const offers = wp ? [].concat(wp.flatrate || [], wp.free || [], wp.ads || []) : [];
+  const mine = [...new Set(offers.filter(o => chosenIds.includes(o.provider_id)).map(o => o.provider_name))];
+  const others = [...new Set(offers.map(o => o.provider_name))];
+  const where = mine.length ? mine : others;
+
+  const facts = el('ul', {className:'facts'});
+  const fact = (label, value) => value && facts.append(el('li', {}, [el('b', {textContent:value}), ' ' + label]));
+  fact('out of 10' + (m.vote_count ? ' from ' + m.vote_count.toLocaleString('en-NZ') + ' votes' : ''), m.vote_average ? m.vote_average.toFixed(1) : '');
+  fact('', year);
+  fact('', m.runtime ? Math.floor(m.runtime / 60) + 'h ' + (m.runtime % 60) + 'm' : '');
+  fact('NZ classification', cert);
+  fact('', (m.genres || []).slice(0, 3).map(g => g.name).join(', '));
+
+  const poster = m.poster_path
+    ? el('img', {className:'poster', src:IMG + m.poster_path, alt:'Poster for ' + m.title, loading:'lazy'})
+    : el('div', {className:'poster', role:'img', ariaLabel:'No poster available'});
+
+  const crew = (m.credits && m.credits.crew) || [];
+  const director = crew.filter(c => c.job === 'Director').map(c => c.name).slice(0, 2).join(', ');
+  const cast = ((m.credits && m.credits.cast) || []).slice(0, 5).map(c => c.name).join(', ');
+  const people = el('ul', {className:'facts people'});
+  if (director) people.append(el('li', {}, [el('b', {textContent:'Director'}), ' ' + director]));
+  if (cast) people.append(el('li', {}, [el('b', {textContent:'Cast'}), ' ' + cast]));
+  const vids = (m.videos && m.videos.results) || [];
+  const trailer = vids.find(v => v.site === 'YouTube' && v.type === 'Trailer' && v.official) || vids.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+
+  const wBtn = el('button', {className:'watched', type:'button'});
+  wBtn.dataset.id = m.id;
+  const paint = () => { const on = isWatched(m.id); wBtn.setAttribute('aria-pressed', String(on)); wBtn.textContent = on ? 'Watched — tap to undo' : 'Mark as watched'; };
+  wBtn.onclick = () => { setWatched({id:m.id, title:m.title, year}, !isWatched(m.id)); paint(); };
+  paint();
+
+  const links = el('div', {className:'links'});
+  if (trailer) links.append(el('a', {href:'https://www.youtube.com/watch?v=' + encodeURIComponent(trailer.key), target:'_blank', rel:'noopener', textContent:'Watch trailer'}));
+  if (wp && wp.link) links.append(el('a', {href:wp.link, target:'_blank', rel:'noopener', textContent:'Where to watch'}));
+  links.append(el('a', {href:'https://www.themoviedb.org/movie/' + m.id, target:'_blank', rel:'noopener', textContent:'More on TMDB'}));
+
+  t.replaceChildren(
+    el('div', {className:'band'}, [el('span', {textContent:theme.id === 'any' ? "Tonight's pick" : theme.label}), el('span', {textContent:'Admit all'})]),
+    el('div', {className:'top'}, [poster, el('div', {}, [el('h3', {textContent:m.title}), facts])]),
+    el('p', {className:'overview', textContent:m.overview || 'No description available.'}),
+    ...(people.children.length ? [people] : []),
+    el('div', {className:'tear'}),
+    el('div', {className:'stub'}, [
+      el('p', {textContent:'Streaming on'}),
+      el('p', {className:'on', textContent:where.length ? where.join(', ') : 'Check the link below'}),
+      links,
+      wBtn,
+    ])
+  );
+  t.hidden = false;
+  t.classList.remove('print'); void t.offsetWidth; t.classList.add('print');
+  t.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth', block:'nearest'});
+}
+
+// ---- UI wiring ----
+function setBusy(b) { const g = $('#go'); g.disabled = b; if (b) g.textContent = 'Picking…'; else if (g.textContent === 'Picking…') g.textContent = 'Pick a movie'; }
+function showMsg(text) { const m = $('#msg'); m.textContent = text; m.hidden = !text; }
+function openSettings(text) { $('#settings').open = true; showMsg(text || ''); $('#key').focus(); }
+
+function applyTheme() {
+  const theme = THEMES.find(t => t.id === state.theme) || THEMES[0];
+  document.documentElement.style.setProperty('--accent', theme.c);
+  document.querySelectorAll('#themes .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === state.theme)));
+}
+function scoreLabel() { $('#scoreOut').textContent = state.minScore > 0 ? Number(state.minScore).toFixed(1) + ' +' : 'Any'; }
+
+THEMES.forEach(t => {
+  const b = el('button', {className:'chip', type:'button', textContent:t.label});
+  b.dataset.id = t.id;
+  b.onclick = () => { state.theme = t.id; savePrefs(); applyTheme(); };
+  $('#themes').append(b);
+});
+SERVICES.forEach(s => {
+  const b = el('button', {className:'chip', type:'button', textContent:s.label});
+  b.dataset.key = s.key;
+  b.setAttribute('aria-pressed', String(state.services.includes(s.key)));
+  b.onclick = () => {
+    const on = !state.services.includes(s.key);
+    state.services = on ? state.services.concat(s.key) : state.services.filter(k => k !== s.key);
+    b.setAttribute('aria-pressed', String(on)); savePrefs();
+  };
+  $('#services').append(b);
+});
+
+const score = $('#score');
+score.value = state.minScore;
+score.oninput = () => { state.minScore = Number(score.value); scoreLabel(); };
+score.onchange = savePrefs;
+$('#known').checked = !!state.known;
+$('#known').onchange = e => { state.known = e.target.checked; savePrefs(); };
+$('#go').onclick = pick;
+$('#saveKey').onclick = () => {
+  key = $('#key').value.trim();
+  if (!key) { showMsg('Paste your TMDB key first.'); return; }
+  store.set('mp.key', key); providers = null; pageCache.clear();
+  $('#key').value = ''; $('#settings').open = false; showMsg('');
+  pick();
+};
+$('#key').addEventListener('keydown', e => { if (e.key === 'Enter') $('#saveKey').click(); });
+
+applyTheme(); scoreLabel(); renderWatched();
+if (!key) $('#settings').open = true;
+})();
+</script>
+</body>
+</html>
